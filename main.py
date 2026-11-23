@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 """Entrypoint for the 22 November 2026 front-page image.
 
-Builds the page through tools/make_image.py, then checks the result
-before handing it over: the file must start with the PNG magic bytes,
-measure exactly 1024x1024, and stay under the 1 MiB entry cap.
-The finished file lands in MAKEFUN_OUTPUT_DIR when that variable
-is set (the grader's output folder), otherwise in the repo's own
-assets/ folder.
+The front page is drawn ahead of time by tools/make_image.py (which
+needs Pillow and DejaVu fonts) and shipped in the repository as
+assets/entry.png. The renderer is deterministic, so the shipped
+file is byte-for-byte what it produces. This entrypoint runs in a
+sandbox with the Python standard library only, so it does not
+render: it delivers the shipped PNG to the output folder, then
+checks it before handing it over — the file must start with the
+PNG magic bytes, measure exactly 1024x1024, and stay under the
+1 MiB entry cap.
+
+The output folder is MAKEFUN_OUTPUT_DIR when that variable is set
+(the grader's collection folder), then ENTRY_OUTPUT_DIR as a manual
+override, otherwise the repo's own assets/ folder.
 """
 
 import hashlib
 import os
+import shutil
 import struct
-import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "tools"))
-
-import make_image  # noqa: E402
+SOURCE = HERE / "assets" / "entry.png"
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 SIZE_LIMIT = 1_048_576
@@ -67,7 +72,8 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / "entry.png"
 
-    make_image.render(target)
+    if target.resolve() != SOURCE.resolve():
+        shutil.copyfile(SOURCE, target)
 
     blob = target.read_bytes()
     width, height = _png_dimensions(blob)

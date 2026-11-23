@@ -4,8 +4,9 @@
 Builds the page through tools/make_image.py, then checks the result
 before handing it over: the file must start with the PNG magic bytes,
 measure exactly 1024x1024, and stay under the 1 MiB entry cap.
-The finished file lands in ENTRY_OUTPUT_DIR when that variable is
-set, otherwise in the repo's own assets/ folder.
+The finished file lands in MAKEFUN_OUTPUT_DIR when that variable
+is set (the grader's output folder), otherwise in the repo's own
+assets/ folder.
 """
 
 import hashlib
@@ -47,10 +48,17 @@ def _fingerprint(path):
 
 
 def _destination():
-    """Pick the output folder: env override wins, assets/ is the default."""
-    override = os.environ.get("ENTRY_OUTPUT_DIR")
-    if override:
-        return Path(override).expanduser()
+    """Pick the output folder.
+
+    The grader runs this entrypoint from a read-only checkout and
+    sets MAKEFUN_OUTPUT_DIR to the folder it collects results from,
+    so that variable wins. ENTRY_OUTPUT_DIR stays as a manual
+    override, and the repo's assets/ folder is the local default.
+    """
+    for var in ("MAKEFUN_OUTPUT_DIR", "ENTRY_OUTPUT_DIR"):
+        override = os.environ.get(var)
+        if override:
+            return Path(override).expanduser()
     return HERE / "assets"
 
 
